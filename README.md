@@ -1,4 +1,13 @@
 # DeepSteg: Deep learning based networks for image steganalysis and steganography
+This is the open project for Deep learning based networks for image steganalysis and steganography, including our FaceAny, our DeepAny, and other reproduced literature on steganalysis and steganography.
+## FaceAny: Fusion-aware Invertible Hiding Network for Multiple Face Anonymization [Paper Link]
+
+### Overview
+<img src="https://raw.githubusercontent.com/chxy95/HAT/master/figures/Performance_comparison.png" width="600"/>
+
+## DeepAny: Surface-guide Reversible Anonymization Network for Realistic Full-Body Privacy Preserving [Paper Link]
+### Overview
+<img src="https://raw.githubusercontent.com/chxy95/HAT/master/figures/Performance_comparison.png" width="600"/>
 
 #### The reproduced literature on steganalysis is listed as follows:
 - XuNet (SPL2016): [**Structural Design of Convolutional Neural Networks for Steganalysis.**](https://ieeexplore.ieee.org/abstract/document/7444146) 
