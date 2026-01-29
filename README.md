@@ -39,7 +39,8 @@ This is the open project for Deep learning based networks for image steganalysis
 
 ## Updates
 - ✅ 2025-01-14: reproduce the codes, models and results of DeepSteg.
-- ✅ 2025-01-15: Release the first version of the survey.
+- ✅ 2025-01-15: Release the first version of the project.
+- ✅ 2025-01-29: Release the codes and models of FaceAny.
 - **(To do)** More detail will be added ... 
 
 ## Overview
