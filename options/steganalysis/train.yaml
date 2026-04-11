@@ -1,0 +1,38 @@
+mode: train
+
+# runtime
+use_data_parallel: true
+device_ids: [0]
+cuda_visible_devices: "0"
+num_workers: 4
+num_workers_test: 2
+
+# optimizer
+epochs: 100
+lr: 0.0002
+weight_decay: 0.00001
+gamma: 0.5
+weight_decay_step: 30
+
+# batch
+train_batch_size: 4
+val_batch_size: 4
+test_batch_size: 4
+save_freq: 2
+val_freq: 2
+strat_save_epoch: 2
+
+# dataset
+train_data_dir: data/steganalysis/train
+val_data_dir: data/steganalysis/val
+test_data_dir: data/steganalysis/test
+stego_img_height: 256
+stego_img_channel: 3
+
+# pretrained paths
+pre_trained_srnet_path: checkpoints/SRNet/checkpoint_100.pt
+pre_trained_yenet_path: checkpoints/YeNet/checkpoint_100.pt
+pre_trained_stegnet_path: checkpoints/StegNet/checkpoint_002.pt
+pre_trained_siastegnet_path: checkpoints/SiaStegNet/checkpoint_018.pt
+pre_trained_xunet_path: checkpoints/XuNet/checkpoint_008.pt
+pre_trained_zhunet_path: checkpoints/ZhuNet/checkpoint_010.pt
