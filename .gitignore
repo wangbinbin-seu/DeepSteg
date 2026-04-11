@@ -1,0 +1,23 @@
+# IDE / editor directories
+.idea/
+.vscode/
+__pycache__/
+
+# Python artifacts
+*.pyc
+*.pyo
+*.pyd
+
+# MacOS
+.DS_Store
+
+# Env / virtualenvs
+.env/
+venv/
+
+# Data caches and generated outputs
+data/steganography/div2k/
+data/steganography/div2k_mini/
+model_zoo/
+results/
+logs/
