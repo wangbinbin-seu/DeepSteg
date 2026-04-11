@@ -18,10 +18,12 @@ from utils.logger import logger_info
 from utils.dataset import get_train_loader, get_val_loader, get_test_loader
 from utils.dirs import mkdirs
 from utils.losses import ContrastiveLoss
+from utils.model import load_model
+from utils.runtime import get_device, wrap_model_for_cuda
 import config as c
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = get_device()
 
 model_save_dir = os.path.join('checkpoints', 'SiaStegNet')
 results_save_dir = os.path.join('results', 'SiaStegNet')
@@ -65,18 +67,18 @@ def preprocess_data(images, labels, random_crop):
     # elif args.model == 'sid':
     #     inputs = [images[..., h0:h0 + ch, w0:w0 + cw]]
 
-    # if args.cuda:
-    inputs = [x.cuda() for x in inputs]
-    labels = labels.cuda()
+    inputs = [x.to(device) for x in inputs]
+    labels = labels.to(device)
     return inputs, labels
 
 
-model = KeNet().to(device)
+model = KeNet()
+model = wrap_model_for_cuda(model, device, c.device_ids if c.use_data_parallel else [])
 
 if c.mode == 'test':
 
-    test_loader = get_test_loader(c.test_data_dir, c.test_batch_size)
-    model.load_state_dict(torch.load(c.pre_trained_siastegnet_path))
+    test_loader = get_test_loader(c.test_data_dir, c.test_batch_size, c.num_workers_test)
+    model = load_model(model, c.pre_trained_siastegnet_path)
 
     model.eval()
 
@@ -114,8 +116,8 @@ if c.mode == 'test':
 
 else: # c.mode == 'train'
 
-    train_loader = get_train_loader(c.train_data_dir, c.train_batch_size,)
-    val_loader = get_val_loader(c.val_data_dir, c.val_batch_size)
+    train_loader = get_train_loader(c.train_data_dir, c.train_batch_size, c.num_workers)
+    val_loader = get_val_loader(c.val_data_dir, c.val_batch_size, c.num_workers)
 
     loss_fn1 = torch.nn.CrossEntropyLoss()
     loss_fn2 = ContrastiveLoss(margin=1.00)

@@ -30,10 +30,10 @@ This is the open project for Deep learning based networks for image steganalysis
 - More...
 
 ## Dependencies and Installation
-- Python 3.8.13, PyTorch = 1.11.0
+- Python 3.10, PyTorch (conda)
 - Run the following commands in your terminal:
 
-  `conda env create -f env.yaml`  
+  `conda env create -f env.yaml`
 
   `conda activate deepsteg`
 
@@ -43,84 +43,153 @@ This is the open project for Deep learning based networks for image steganalysis
 - ✅ 2025-01-29: Release the codes and models of FaceAny.
 - **(To do)** More detail will be added ... 
 
-## Overview
-<img src="xxx.png" width="600"/>
+## Configuration (Options)
+- All runtime settings live in `options/` and are loaded by `config.py` / `config_steg.py`.
+- Train/Test are split into separate YAML files:
+  - Steganalysis: `options/steganalysis/train.yaml`, `options/steganalysis/test.yaml`
+  - Steganography: `options/steganography/train.yaml`, `options/steganography/test.yaml`
+- You can override the option file at runtime:
+  - `python srnet.py --opt options/steganalysis/train.yaml`
+  - `python hinet.py --opt options/steganography/test.yaml`
+- Convenience scripts (recommended):
+  - Steganalysis: `bash scripts/train_srnet.sh`, `bash scripts/test_srnet.sh`, `bash scripts/train_xunet.sh`, `bash scripts/test_xunet.sh`, `bash scripts/train_yenet.sh`, `bash scripts/test_yenet.sh`, `bash scripts/train_zhunet.sh`, `bash scripts/test_zhunet.sh`, `bash scripts/train_stegnet.sh`, `bash scripts/test_stegnet.sh`, `bash scripts/train_siastegnet.sh`, `bash scripts/test_siastegnet.sh`
+  - Steganography: `bash scripts/train_hinet.sh`, `bash scripts/test_hinet.sh`, `bash scripts/train_hinet_adv.sh` (HiNet + steganalysis-aware variant), `bash scripts/train_hidden.sh`, `bash scripts/test_hidden.sh`, `bash scripts/train_balujanet.sh`, `bash scripts/test_balujanet.sh`, `bash scripts/train_wengnet.sh`, `bash scripts/test_wengnet.sh`
+- Relative paths in YAML resolve from the repo root.
+- Multi-GPU: set `use_data_parallel: true` and adjust `device_ids` or `*_device_ids` in YAML.
 
-**Benchmark results on BossBase**
-| Model | Params(M) | Multi-Adds(G) | SRNet | ZhuNet | XuNet | YeNet | StegNet | SiaStegNet | 
-|-------|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|:---------:|
-| balujanet |   |   |   |   |   |   |   |   |
-| hidden |   |   |   |   |   |   |   |   |
-| wengnet |   |   |   |   |   |   |   |   |
-| hinet |   |   |   |   |   |   |   |   |
+## Project Snapshot
+<img src="img.png" width="600"/>
+
+**Benchmark results on BossBase (placeholder)**
+| Model | Params(M) | Multi-Adds(G) | SRNet | ZhuNet | XuNet | YeNet | StegNet | SiaStegNet |
+|-------|:---------:|:------------:|:-----:|:------:|:-----:|:-----:|:-------:|:---------:|
+| balujanet | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| hidden | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| wengnet | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| hinet | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
 
 ## Data Preparation
-- The models are trained on the [DIV2K](https://opendatalab.com/DIV2K) training dataset, and the mini-batch size is set to 8, with half of the images randomly selected as the cover images and the remaining images as the secret images. 
-- The trained models are tested on three test sets, including the DIV2K test dataset, 1000 images randomly selected from the ImageNet test dataset
-- Here we provide [test sets](https://drive.google.com/file/d/1NYVWZXe0AjxdI5vuI2gF6_2hwoS1c4y7/view?usp=sharing).
 
-- For train or test on the dataset,  e.g.  DIV2K, change the code in `config.py`:
+### Dataset folder conventions (this repo)
 
-    `line17:  data_dir = '' `
-  
-    `data_name_train = 'div2k'`
-  
-    `data_name_test = 'div2k'`
-  
-    `line30:  suffix = 'png' `
+**Steganalysis (cover/stego pairs)**
+- Expected structure (recommended):
 
-- Structure of the dataset directory:
+```
+<train_data_dir>/
+  cover/xxx1.png
+  cover/xxx2.png
+  stego/xxx1.png
+  stego/xxx2.png
 
-<center>
-  <img src=https://github.com/albblgb/pusnet/blob/main/utils/dataset_folder_structure.png width=36% />
-</center>
+<val_data_dir>/ (same)
+<test_data_dir>/ (same)
+```
+
+Notes:
+- `utils/dataset.py` enforces that `cover/` and `stego/` have the **same filenames**.
+- `get_test_loader()` supports the pair-folder format above, and falls back to `torchvision.datasets.ImageFolder` if `cover/` and `stego/` are not present.
+
+**Steganography (cover/secret image streams)**
+- Expected structure:
+
+```
+<data_dir>/<data_name>/
+  train/*.png
+  test/*.png
+```
+
+### Where to get datasets (references)
+Because datasets differ in license/availability, we only provide **official source links** and folder guidance here:
+
+- DIV2K (super-resolution / image source, used here as cover/secret pool):
+  - https://data.vision.ee.ethz.ch/cvl/DIV2K/
+- COCO (general image source):
+  - https://cocodataset.org/
+- ImageNet (general image source; requires registration):
+  - https://www.image-net.org/
+
+For steganalysis benchmarks, common datasets include (availability varies):
+
+- **BOSSBase (a.k.a. BOSSBase 1.01 / BOSS)**
+  - A classic steganalysis benchmark of grayscale images used in many steganalysis papers.
+  - **Access**: not always hosted as a simple public download; many groups obtain it via academic channels.
+  - Typical ways researchers get BOSSBase:
+    - Follow the dataset reference in the original papers/tutorials and request access through the dataset maintainers or affiliated lab pages.
+    - Ask the corresponding authors of recent steganalysis papers for the exact acquisition instructions they used.
+    - Use your lab/institution’s existing copy if available.
+  - **Folder mapping for this repo**:
+    - Put cover/stego pairs under `train_data_dir/cover` + `train_data_dir/stego` (and same for val/test).
+    - Keep filenames aligned (e.g., `000001.pgm` in both cover and stego).
+
+- **BOWS2**
+  - Another widely-used dataset in steganalysis, often used together with BOSSBase for training/validation.
+  - **Access**: similar to BOSSBase, it may require academic request / non-commercial usage agreement.
+  - **Tip**: If you cannot obtain BOSS/BOWS2, you can still run the code by building your own cover/stego pairs from any image source and your chosen stego embedding tool.
+
+- **ALASKA2 (steganalysis competition dataset)**
+  - https://www.kaggle.com/c/alaska2-image-steganalysis
+
+### Configure paths
+Edit YAML options files instead of modifying Python code:
+- Steganalysis: `options/steganalysis/train.yaml` / `options/steganalysis/test.yaml`
+  - `train_data_dir`, `val_data_dir`, `test_data_dir`
+- Steganography: `options/steganography/train.yaml` / `options/steganography/test.yaml`
+  - `data_dir`, `data_name_train`, `data_name_test`, `suffix`
 
 ## Get Started
 #### Training for steganalysis
-1. Change the code in `config.py`
+1. Update `options/steganalysis/train.yaml`
+   - `mode: train`
+   - `train_data_dir`, `val_data_dir`
+   - `stego_img_height`, `stego_img_channel`
+2. Run `python *net.py`. For example, `python srnet.py`
 
-    `line4: mode = 'train'`
-   
-    `line17: train_data_dir = ''`
-   
-    `line18: val_data_dir = ''`
-
-    `line20: stego_img_height = `
-   
-    `line21: stego_img_channel = `
-
-3. Run `python *net.py`. For example, `python srnet.py`
+Example commands:
+```
+python srnet.py --opt options/steganalysis/train.yaml
+bash scripts/train_srnet.sh
+```
 
 #### Training for steganography
-1. Change the code in `config.py`
-
-    `line4:  mode = 'train' ` 
-
+1. Update `options/steganography/train.yaml`
+   - `mode: train`
+   - `data_dir`, `data_name_train`, `data_name_test`
 2. Run `python *net.py`, for example, `python wengnet.py`
 
+Example commands:
+```
+python hinet.py --opt options/steganography/train.yaml
+bash scripts/train_hinet.sh
+```
 
 #### Testing for steganalysis
-1. Change the code in `config.py`
+1. Update `options/steganalysis/test.yaml`
+   - `mode: test`
+   - `test_data_dir`
+   - `pre_trained_*net_path`
+2. Run `python *net.py`
 
-    `line4: mode = 'test' `
+Example commands:
+```
+python srnet.py --opt options/steganalysis/test.yaml
+bash scripts/test_srnet.sh
+```
 
-    `line19: test_data_dir = ''`
-  
-    `line36-41: pre_trained_*net_path = ''`
-
-3. Run `python *net.py`
-
-- The trained steganalysis networks will be saved in 'checkpoint/'
-- The results and running logs will be saved in 'results/'
+- The trained steganalysis networks will be saved in `checkpoints/`
+- The results and running logs will be saved in `results/`
 
 #### Testing for steganography
-1. Change the code in `config.py`
-
-    `line4:  mode = 'test' `
-  
-    `line36-41:  test_*net_path = '' `
-
+1. Update `options/steganography/test.yaml`
+   - `mode: test`
+   - `test_*net_path`
 2. Run `python *net.py`
+
+Example commands:
+```
+python hinet.py --opt options/steganography/test.yaml
+bash scripts/test_hinet.sh
+```
 
 - Here we provide [trained models](https://drive.google.com/drive/folders/1lM9ED7uzWYeznXSWKg4mgf7Xc7wjjm8Q?usp=sharing).
 - The processed images, such as stego image and recovered secret image, will be saved at 'results/images'
@@ -131,7 +200,7 @@ This is the open project for Deep learning based networks for image steganalysis
 
 ## Results
 The inference results on benchmark datasets are available at
-[Google Drive](https://drive.google.com/drive/foldersXXXX) or [Baidu Netdisk](https://pan.baidu.com/XXXX) (access code: XXXX).
+[Google Drive](https://drive.google.com/drive/folders/1lM9ED7uzWYeznXSWKg4mgf7Xc7wjjm8Q?usp=sharing).
 
 
 ## Acknowledgement

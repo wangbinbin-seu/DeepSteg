@@ -18,10 +18,13 @@ from data.dataset import load_dataset
 from utils.dirs import mkdirs
 import config_steg as c
 from utils.model import load_model
+from utils.runtime import get_device, wrap_model_for_cuda
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = c.hidden_device_ids
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if c.hidden_device_ids:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(v) for v in c.hidden_device_ids])
+
+device = get_device()
 model_save_path = os.path.join(c.model_dir, 'hidden')
 mkdirs(model_save_path)
 train_data_dir = os.path.join(c.data_dir, c.data_name_train, 'train')
@@ -38,14 +41,23 @@ logger.info('test data: {:s}'.format(c.data_name_test))
 logger.info('mode: {:s}'.format(c.mode))
 
 ################## prepare ####################
-enc_decoder = EncoderDecoder().to(device)
-discriminator = Discriminator().to(device)
-# model = nn.DataParallel(model)
-train_loader, test_loader = load_dataset(train_data_dir, test_data_dir, c.hidden_batch_size_train, c.hidden_batch_size_test)
+enc_decoder = EncoderDecoder()
+discriminator = Discriminator()
+selected_device_ids = list(range(len(c.hidden_device_ids))) if c.hidden_device_ids else []
+enc_decoder = wrap_model_for_cuda(enc_decoder, device, selected_device_ids if c.use_data_parallel else [])
+discriminator = wrap_model_for_cuda(discriminator, device, selected_device_ids if c.use_data_parallel else [])
+train_loader, test_loader = load_dataset(
+    train_data_dir,
+    test_data_dir,
+    c.hidden_batch_size_train,
+    c.hidden_batch_size_test,
+    num_workers_train=getattr(c, "num_workers_train", 8),
+    num_workers_test=getattr(c, "num_workers_test", 2),
+)
 
 if c.mode == 'test':
     # enc_decoder = torch.load(c.test_hidden_path)
-    enc_decoder.load_state_dict(torch.load(c.test_hidden_path))
+    enc_decoder = load_model(enc_decoder, c.test_hidden_path)
     
     with torch.no_grad():
         S_psnr = []; S_ssim = []; S_mae = []; S_rmse = []

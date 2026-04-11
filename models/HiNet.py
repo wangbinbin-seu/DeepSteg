@@ -172,6 +172,6 @@ def init_model(mod):
     for key, param in mod.named_parameters():
         split = key.split('.')
         if param.requires_grad:
-            param.data = 0.01 * torch.randn(param.data.shape).cuda()
+            param.data = 0.01 * torch.randn(param.data.shape, device=next(mod.parameters()).device)
             if split[-2] == 'conv5':
                 param.data.fill_(0.)

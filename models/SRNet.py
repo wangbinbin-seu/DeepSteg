@@ -123,13 +123,16 @@ class Type4(nn.Module):
 
 
 
+STEG_CHANNELS = getattr(c, "stego_img_channel", 3)
+
+
 class Model(nn.Module):
     """This is SRNet model class."""
 
     def __init__(self) -> None:
         """Constructor."""
         super().__init__()
-        self.type1s = nn.Sequential(Type1(c.stego_img_channel, 64), Type1(64, 16))
+        self.type1s = nn.Sequential(Type1(STEG_CHANNELS, 64), Type1(64, 16))
         self.type2s = nn.Sequential(
             Type2(16, 16),
             Type2(16, 16),

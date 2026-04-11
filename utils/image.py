@@ -10,10 +10,12 @@ def quantization(tensor):
 # def quantization_v2(tensor):
 #     return torch.round(255 * (tensor - tensor.min()) / (tensor.max() - tensor.min()))/255
 
-def gauss_noise(shape):
-    noise = torch.zeros(shape).cuda()
+def gauss_noise(shape, device=None):
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    noise = torch.zeros(shape, device=device)
     for i in range(noise.shape[0]):
-        noise[i] = torch.randn(noise[i].shape).cuda()
+        noise[i] = torch.randn(noise[i].shape, device=device)
 
     return noise
 
@@ -152,7 +154,7 @@ def iwt_init(x):
     x4 = x[:, out_channel * 3:out_channel * 4, :, :] / 2
 
 
-    h = torch.zeros([out_batch, out_channel, out_height, out_width]).float().cuda()
+    h = torch.zeros([out_batch, out_channel, out_height, out_width], device=x.device).float()
 
     h[:, :, 0::2, 0::2] = x1 - x2 - x3 + x4
     h[:, :, 1::2, 0::2] = x1 - x2 + x3 - x4

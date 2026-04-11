@@ -48,14 +48,14 @@ transform_val = T.Compose([
 ])
 
 
-def load_dataset(train_data_dir, test_data_dir, batchsize_train, batchsize_test, sigma=None):
+def load_dataset(train_data_dir, test_data_dir, batchsize_train, batchsize_test, sigma=None, num_workers_train=8, num_workers_test=2):
 
     train_loader = DataLoader(
         dataset_(train_data_dir, transform_train, sigma),
         batch_size=batchsize_train,
         shuffle=True,
         pin_memory=True,
-        num_workers=8,
+        num_workers=num_workers_train,
         drop_last=True
     )
 
@@ -64,7 +64,7 @@ def load_dataset(train_data_dir, test_data_dir, batchsize_train, batchsize_test,
         batch_size=batchsize_test,
         shuffle=False,
         pin_memory=True,
-        num_workers=2,
+        num_workers=num_workers_test,
         drop_last=True
     )
 

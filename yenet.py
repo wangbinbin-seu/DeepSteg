@@ -16,10 +16,12 @@ from utils.terminal import MetricMonitor
 from utils.logger import logger_info
 from utils.dataset import get_train_loader, get_val_loader, get_test_loader
 from utils.dirs import mkdirs
+from utils.model import load_model
+from utils.runtime import get_device, wrap_model_for_cuda
 import config as c
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = get_device()
 
 model_save_dir = os.path.join('checkpoints', 'YeNet')
 results_save_dir = os.path.join('results', 'YeNet')
@@ -36,13 +38,14 @@ logger.info('val data dir: {:s}'.format(c.val_data_dir))
 logger.info('test data dir: {:s}'.format(c.test_data_dir))
 
 
-model = Model().to(device)
+model = Model()
+model = wrap_model_for_cuda(model, device, c.device_ids if c.use_data_parallel else [])
 # model = model.apply(weights_init)
 
 if c.mode == 'test':
 
-    test_loader = get_test_loader(c.test_data_dir, c.test_batch_size)
-    model.load_state_dict(torch.load(c.pre_trained_yenet_path))
+    test_loader = get_test_loader(c.test_data_dir, c.test_batch_size, c.num_workers_test)
+    model = load_model(model, c.pre_trained_yenet_path)
 
     model.eval()
 
@@ -78,8 +81,8 @@ if c.mode == 'test':
 
 else: # c.mode == 'train'
 
-    train_loader = get_train_loader(c.train_data_dir, c.train_batch_size,)
-    val_loader = get_val_loader(c.val_data_dir, c.val_batch_size)
+    train_loader = get_train_loader(c.train_data_dir, c.train_batch_size, c.num_workers)
+    val_loader = get_val_loader(c.val_data_dir, c.val_batch_size, c.num_workers)
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=c.lr, weight_decay=c.weight_decay)

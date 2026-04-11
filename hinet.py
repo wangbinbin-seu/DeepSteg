@@ -16,11 +16,14 @@ from data.dataset import load_dataset
 from models.HiNet import Model, init_model
 from utils.dirs import mkdirs
 from utils.model import load_model
+from utils.runtime import get_device, wrap_model_for_cuda
 import config_steg as c
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = c.hinet_device_ids
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if c.hinet_device_ids:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(v) for v in c.hinet_device_ids])
+
+device = get_device()
 model_save_path = os.path.join(c.model_dir, 'hinet')
 mkdirs(model_save_path)
 train_data_dir = os.path.join(c.data_dir, c.data_name_train, 'train')
@@ -37,11 +40,20 @@ logger.info('test data: {:s}'.format(c.data_name_test))
 logger.info('mode: {:s}'.format(c.mode))
 
 
-train_loader, test_loader = load_dataset(train_data_dir, test_data_dir, c.hinet_batch_size_train, c.hinet_batch_size_test)
+train_loader, test_loader = load_dataset(
+    train_data_dir,
+    test_data_dir,
+    c.hinet_batch_size_train,
+    c.hinet_batch_size_test,
+    num_workers_train=getattr(c, "num_workers_train", 8),
+    num_workers_test=getattr(c, "num_workers_test", 2),
+)
 dwt = DWT()
 iwt = IWT()
 
-net = Model().cuda()
+net = Model()
+selected_device_ids = list(range(len(c.hinet_device_ids))) if c.hinet_device_ids else []
+net = wrap_model_for_cuda(net, device, selected_device_ids if c.use_data_parallel else [])
 if c.mode == 'test':
     net = load_model(net, c.test_hinet_path)
 
@@ -71,12 +83,12 @@ if c.mode == 'test':
             stego = quantization(stego)
             output_stego = dwt(stego)
             output_z = output.narrow(1, 4 * c.channels_in, output.shape[1] - 4 * c.channels_in)
-            output_z = gauss_noise(output_z.shape)
+            output_z = gauss_noise(output_z.shape, device=device)
 
             #################
             #   backward:   #
             #################
-            output_stego = output_stego.cuda()
+            output_stego = output_stego.to(device)
             output_rev = torch.cat((output_stego, output_z), 1)
             output_image = net(output_rev, rev=True)
             secret_rev = output_image.narrow(1, 4 * c.channels_in, output_image.shape[1] - 4 * c.channels_in)
@@ -137,7 +149,8 @@ if c.mode == 'test':
 
 else:
     init_model(net)
-    net = torch.nn.DataParallel(net)
+    if c.use_data_parallel and selected_device_ids:
+        net = torch.nn.DataParallel(net, device_ids=selected_device_ids)
 
     guide_loss = nn.MSELoss().to(device)
     reconstruction_loss = nn.MSELoss().to(device)
@@ -181,7 +194,7 @@ else:
             #   backward:   #
             #################
 
-            output_z_guass = gauss_noise(output_z.shape)
+            output_z_guass = gauss_noise(output_z.shape, device=device)
 
             output_rev = torch.cat((output_stego, output_z_guass), 1)
             output_image = net(output_rev, rev=True)
@@ -193,7 +206,7 @@ else:
             #################
             #     loss:     #
             #################
-            g_loss = guide_loss(stego_img.cuda(), cover.cuda())
+            g_loss = guide_loss(stego_img.to(device), cover.to(device))
             r_loss = reconstruction_loss(secret_rev, secret)
             stego_low = output_stego.narrow(1, 0, c.channels_in)
             cover_low = cover_input.narrow(1, 0, c.channels_in)
@@ -241,12 +254,12 @@ else:
                     output_stego = output.narrow(1, 0, 4 * c.channels_in)
                     stego = iwt(output_stego)
                     output_z = output.narrow(1, 4 * c.channels_in, output.shape[1] - 4 * c.channels_in)
-                    output_z = gauss_noise(output_z.shape)
+                    output_z = gauss_noise(output_z.shape, device=device)
 
                     #################
                     #   backward:   #
                     #################
-                    output_stego = output_stego.cuda()
+                    output_stego = output_stego.to(device)
                     output_rev = torch.cat((output_stego, output_z), 1)
                     output_image = net(output_rev, rev=True)
                     secret_rev = output_image.narrow(1, 4 * c.channels_in, output_image.shape[1] - 4 * c.channels_in)

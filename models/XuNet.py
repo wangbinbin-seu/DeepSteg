@@ -8,6 +8,8 @@ import torch.nn.functional as F
 
 import config as c
 
+STEG_CHANNELS = getattr(c, "stego_img_channel", 3)
+
 
 class ImageProcessing(nn.Module):
     """Computes convolution with KV filter over the input tensor."""
@@ -33,7 +35,7 @@ class ImageProcessing(nn.Module):
     def forward(self, inp: Tensor) -> Tensor:
         """Returns tensor convolved with KV filter"""
 
-        for i in range(c.stego_img_channel):
+        for i in range(STEG_CHANNELS):
             if i == 0:
                 features = F.conv2d(inp[:, i, :, :].unsqueeze(dim=1), self.kv_filter, stride=1, padding=2)
             else:

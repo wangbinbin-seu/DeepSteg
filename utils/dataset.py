@@ -18,6 +18,19 @@ class dataset_(Dataset):
         self.transforms = transform
         self.cover_filenames = list(sorted(os.listdir(cover_dir)))
         self.stego_filenames = list(sorted(os.listdir(stego_dir)))
+
+        # Safety: ensure cover/stego pairing is stable.
+        # Many steganalysis datasets rely on identical filenames under cover/ and stego/.
+        if len(self.cover_filenames) != len(self.stego_filenames):
+            raise ValueError(
+                f"Mismatched cover/stego counts: {len(self.cover_filenames)} vs {len(self.stego_filenames)}"
+            )
+        cover_stems = [os.path.splitext(f)[0] for f in self.cover_filenames]
+        stego_stems = [os.path.splitext(f)[0] for f in self.stego_filenames]
+        if cover_stems != stego_stems:
+            raise ValueError(
+                "Cover/stego filenames are not aligned. Ensure the same filenames exist in both folders."
+            )
     
     def __len__(self):
         return len(self.cover_filenames)
@@ -55,34 +68,54 @@ transform_val_or_test = T.Compose([
 ])
 
 
-def get_train_loader(data_dir, batchsize=4):
+def get_train_loader(data_dir, batchsize=4, num_workers=0):
 
     train_loader = DataLoader(
         dataset_(os.path.join(data_dir, 'cover'), os.path.join(data_dir, 'stego'), transform_train),
         batch_size=batchsize,
         shuffle=True,
         pin_memory=True,
-        # num_workers=8,
+        num_workers=num_workers,
         drop_last=True
     )
     return train_loader
 
-def get_val_loader(data_dir, batchsize=4):
+def get_val_loader(data_dir, batchsize=4, num_workers=0):
 
     val_loader = DataLoader(
         dataset_(os.path.join(data_dir, 'cover'), os.path.join(data_dir, 'stego'), transform_val_or_test),
         batch_size=batchsize,
         shuffle=True,
         pin_memory=False,
-        # num_workers=8,
+        num_workers=num_workers,
         drop_last=False
     )
     return val_loader
 
 
-def get_test_loader(data_dir, batch_size):
+def get_test_loader(data_dir, batch_size, num_workers=0):
+    """Test loader.
+
+    Supports two formats:
+    1) Pair folders: {data_dir}/cover and {data_dir}/stego (recommended)
+    2) torchvision ImageFolder format (fallback)
+    """
+    cover_dir = os.path.join(data_dir, 'cover')
+    stego_dir = os.path.join(data_dir, 'stego')
+
+    if os.path.isdir(cover_dir) and os.path.isdir(stego_dir):
+        test_loader = DataLoader(
+            dataset_(cover_dir, stego_dir, transform_val_or_test),
+            batch_size=batch_size,
+            shuffle=False,
+            pin_memory=False,
+            num_workers=num_workers,
+            drop_last=False,
+        )
+        return test_loader
+
     test_sets = ImageFolder(root=data_dir, transform=transform_val_or_test)
-    test_loader = DataLoader(test_sets, batch_size=batch_size, shuffle=False, num_workers=2, drop_last=False)
+    test_loader = DataLoader(test_sets, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=False)
     return test_loader
 
 

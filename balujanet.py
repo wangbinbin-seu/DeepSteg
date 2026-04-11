@@ -18,10 +18,13 @@ from data.dataset import load_dataset
 from utils.dirs import mkdirs
 import config_steg as c
 from utils.model import load_model
+from utils.runtime import get_device, wrap_model_for_cuda
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = c.baluja_device_ids
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if c.baluja_device_ids:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(v) for v in c.baluja_device_ids])
+
+device = get_device()
 model_save_path = os.path.join(c.model_dir, 'balujanet')
 mkdirs(model_save_path)
 train_data_dir = os.path.join(c.data_dir, c.data_name_train, 'train')
@@ -37,13 +40,22 @@ logger.info('train data: {:s}'.format(c.data_name_train))
 logger.info('test data: {:s}'.format(c.data_name_test))
 logger.info('mode: {:s}'.format(c.mode))
 
-train_loader, test_loader = load_dataset(train_data_dir, test_data_dir, c.baluja_batch_size_train, c.baluja_batch_size_test)
+train_loader, test_loader = load_dataset(
+    train_data_dir,
+    test_data_dir,
+    c.baluja_batch_size_train,
+    c.baluja_batch_size_test,
+    num_workers_train=getattr(c, "num_workers_train", 8),
+    num_workers_test=getattr(c, "num_workers_test", 2),
+)
 
-model = balujanet().cuda()
+model = balujanet()
+selected_device_ids = list(range(len(c.baluja_device_ids))) if c.baluja_device_ids else []
+model = wrap_model_for_cuda(model, device, selected_device_ids if c.use_data_parallel else [])
 
 if c.mode == 'test':
 
-    model.load_state_dict(torch.load(c.test_balujanet_path))
+    model = load_model(model, c.test_balujanet_path)
     
     with torch.no_grad():
         S_psnr = []; S_ssim = []; S_mae = []; S_rmse = []
@@ -52,7 +64,7 @@ if c.mode == 'test':
         model.eval()
         stream = tqdm(test_loader)
         for idx, data in enumerate(stream):
-            data = data.cuda()
+            data = data.to(device)
             secret = data[data.shape[0]//2:]
             cover = data[:data.shape[0]//2]
 
@@ -110,8 +122,8 @@ if c.mode == 'test':
         logger.info('testing, stego_avg_mae: {:.2f}, secref_avg_mae: {:.2f}'.format(np.mean(S_mae), np.mean(R_mae)))
         logger.info('testing, stego_avg_rmse: {:.2f}, secref_avg_rmse: {:.2f}'.format(np.mean(S_rmse), np.mean(R_rmse)))
 else:
-    secret_restruction_loss = nn.MSELoss().cuda()
-    stego_similarity_loss = nn.MSELoss().cuda()
+    secret_restruction_loss = nn.MSELoss().to(device)
+    stego_similarity_loss = nn.MSELoss().to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=c.lr, betas=c.betas, eps=1e-6, weight_decay=c.weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, c.weight_step, gamma=c.gamma)
@@ -129,7 +141,7 @@ else:
         stream = tqdm(train_loader)
 
         for batch_idx, data in enumerate(stream):
-            data = data.cuda()
+            data = data.to(device)
             secret = data[data.shape[0]//2:]
             cover = data[:data.shape[0]//2]
             
@@ -167,7 +179,7 @@ else:
                 S_psnr = []
                 R_psnr = []
                 for data in test_loader:
-                    data = data.cuda()
+                    data = data.to(device)
                     secret = data[data.shape[0]//2:]
                     cover = data[:data.shape[0]//2]
 
